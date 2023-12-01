@@ -1,6 +1,5 @@
-use clap::Parser;
 use crate::solution::Solution;
-
+use clap::Parser;
 
 /// Simple program to greet a person
 #[derive(Parser, Debug)]
@@ -9,5 +8,4 @@ pub struct Args {
     /// Which AOC day + part to run
     #[arg()]
     pub(crate) solution: Solution,
-
 }

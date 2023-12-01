@@ -1,14 +1,15 @@
-use std::fmt::Debug;
-use std::{fmt, fs};
+
+use std::fs;
 use std::path::Path;
+use std::str::from_utf8;
 
 use clap::Parser;
 
 use crate::cli::Args;
 use crate::solution::Solution;
 
-mod day1;
 mod cli;
+mod day1;
 mod solution;
 
 fn main() {
@@ -17,12 +18,14 @@ fn main() {
     let infile_name = format!("{:?}.txt", &args.solution).to_lowercase();
     let infile = Path::new("./inputs/").join(&infile_name);
     println!("Reading input from: {:?}", &infile);
-    let input_content = fs::read(infile).expect("Unable to read file");
+    let bytes = fs::read(infile).expect("Unable to read file");
+    let input_content = from_utf8(&bytes).expect("Unable to parse file");
 
     println!("Running solution: {:?}", &args.solution);
     let output = match args.solution {
         Solution::D1P1 => day1::part1::run(input_content),
-    }.expect("Failed to run solution");
+    }
+    .expect("Failed to run solution");
 
     let outfile_name = format!("{:?}.txt", &args.solution).to_lowercase();
     let outfile = Path::new("./outputs/").join(&outfile_name);
