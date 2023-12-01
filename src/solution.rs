@@ -5,4 +5,5 @@ use clap::ValueEnum;
 #[clap(rename_all = "kebab_case")]
 pub enum Solution {
     D1P1,
+    D1P2,
 }

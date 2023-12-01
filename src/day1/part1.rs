@@ -1,5 +1,3 @@
-use nom::character::is_digit;
-
 /// 1abc2
 /// ^   ^
 /// pqr3stu8vwx
@@ -9,26 +7,10 @@ use nom::character::is_digit;
 /// treb7uchet
 ///     ^
 pub fn run(input: &str) -> anyhow::Result<String> {
-    let mut sum: u64 = 0;
-    for line in input.lines() {
-        let mut current_digit: Option<u8> = None;
-        line.bytes().filter(|c| is_digit(*c)).for_each(|c| {
-            let d = c - b'0';
-            match current_digit {
-                Some(_) => {}
-                None => {
-                    sum += (d as u64) * 10;
-                }
-            }
-            current_digit = Some(d);
-        });
-        match current_digit {
-            None => unreachable!(),
-            Some(d) => {
-                sum += d as u64
-            }
-        }
-    }
+    let sum: u32 = input.lines().map(|line| {
+        let digits: Vec<u32> = line.chars().filter_map(|c| c.to_digit(10)).collect();
+        10 * digits.first().unwrap() + digits.last().unwrap()
+    }).sum();
     Ok(sum.to_string())
 }
 

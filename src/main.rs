@@ -24,10 +24,12 @@ fn main() {
     println!("Running solution: {:?}", &args.solution);
     let output = match args.solution {
         Solution::D1P1 => day1::part1::run(input_content),
+        Solution::D1P2 => day1::part2::run(input_content),
     }
     .expect("Failed to run solution");
 
     let outfile_name = format!("{:?}.txt", &args.solution).to_lowercase();
     let outfile = Path::new("./outputs/").join(&outfile_name);
-    fs::write(outfile, output).expect("Unable to write file");
+    fs::write(&outfile, output).expect("Unable to write file");
+    println!("Output written to: {:?}", &outfile)
 }
