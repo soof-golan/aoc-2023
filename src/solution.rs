@@ -6,4 +6,5 @@ use clap::ValueEnum;
 pub enum Solution {
     D1P1,
     D1P2,
+    D2P1,
 }

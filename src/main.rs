@@ -11,6 +11,7 @@ use crate::solution::Solution;
 mod cli;
 mod day1;
 mod solution;
+mod day2;
 
 fn main() {
     let args = Args::parse();
@@ -25,6 +26,7 @@ fn main() {
     let output = match args.solution {
         Solution::D1P1 => day1::part1::run(input_content),
         Solution::D1P2 => day1::part2::run(input_content),
+        Solution::D2P1 => day2::part1::run(input_content),
     }
     .expect("Failed to run solution");
 
