@@ -1,137 +1,131 @@
-use std::cmp::max;
-use std::ops::{Add, AddAssign};
+use std::collections::{HashMap, HashSet};
 
-use nom::bytes::complete::tag;
-use nom::character::complete::{alpha1, digit1};
-use nom::combinator::{map_res, opt};
+use nom::branch::alt;
+use nom::character::complete::u32 as u32_parser;
+use nom::character::streaming::anychar;
+use nom::combinator::map;
 use nom::IResult;
-use nom::multi::fold_many0;
 
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
-struct CubeCount {
-    r: u32,
-    g: u32,
-    b: u32,
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+struct P {
+    x: isize,
+    y: isize,
 }
 
-impl Add<CubeCount> for CubeCount {
-    type Output = CubeCount;
-
-    fn add(self, rhs: CubeCount) -> Self::Output {
-        CubeCount {
-            r: self.r + rhs.r,
-            g: self.g + rhs.g,
-            b: self.b + rhs.b,
-        }
-    }
+#[derive(Debug, PartialEq, Eq, Hash)]
+struct Number {
+    x: isize,
+    y: isize,
+    value: u32,
 }
 
-impl AddAssign<CubeCount> for CubeCount {
-    fn add_assign(&mut self, rhs: CubeCount) {
-        self.r += rhs.r;
-        self.g += rhs.g;
-        self.b += rhs.b;
-    }
+fn maybe_number(input: &str) -> IResult<&str, Option<u32>> {
+    alt((map(u32_parser, |n: u32| Some(n)), map(anychar, |_| None)))(input)
 }
-
-impl CubeCount {
-    fn new() -> Self {
-        CubeCount {
-            r: 0,
-            g: 0,
-            b: 0,
-        }
-    }
-
-    fn all_lt(&self, other: &CubeCount) -> bool {
-        self.r <= other.r && self.g <= other.g && self.b <= other.b
-    }
-
-    fn bump(&mut self, other: &CubeCount) {
-        self.r = max(self.r, other.r);
-        self.g = max(self.g, other.g);
-        self.b = max(self.b, other.b);
-    }
-
-    fn power(&self) -> u32 {
-        self.r * self.g * self.b
-    }
-
-
-}
-
-
-fn game_id(input: &str) -> IResult<&str, usize> {
-    let (input, _) = tag("Game ")(input)?;
-    let (input, game_id) = map_res(digit1, str::parse)(input)?;
-    let (input, _) = tag(": ")(input)?;
-    Ok((input, game_id))
-}
-
-fn str_to_count(input: &str, count: u32) -> CubeCount {
-    match input {
-        "red" => CubeCount { r: count, g: 0, b: 0 },
-        "green" => CubeCount { r: 0, g: count, b: 0 },
-        "blue" => CubeCount { r: 0, g: 0, b: count },
-        _ => panic!("Unknown color: {:?}", input),
-    }
-}
-
-
-/// ```rust
-/// assert_eq!(parse_color("3 blue"), Ok(("", CubeCount { r: 0, g: 0, b: 3 })));
-/// ```
-///
-fn parse_color(input: &str) -> IResult<&str, CubeCount> {
-    let (input, count): (&str, u32) = map_res(digit1, str::parse)(input)?;
-    let (input, _) = tag(" ")(input)?;
-    let (input, color) = alpha1(input)?;
-    let (input, _) = opt(tag(","))(input)?; // consume the comma
-    let (input, _) = opt(tag(" "))(input)?; // consume the comma
-    return Ok((input, str_to_count(color, count)));
-}
-
-fn parse_round(input: &str) -> IResult<&str, CubeCount> {
-    if input.is_empty() {
-        return Err(nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Eof)));
-    }
-    let (input, _) = opt(tag(";"))(input)?; // consume the semicolon
-    let (input, _) = opt(tag(" "))(input)?; // consume the semicolon
-    let (input, result) = fold_many0(
-        parse_color,
-        CubeCount::new,
-        |mut acc, item| {
-            acc.bump(&item);
-            acc
-        },
-    )(input)?;
-    Ok((input, result))
-}
-
-
-/// pareses: '3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green, 1 green'
-fn parse_game(input: &str) -> IResult<&str, CubeCount> {
-    fold_many0(
-        parse_round,
-        CubeCount::new,
-        |mut acc, item| {
-            acc.bump(&item);
-            acc
-        },
-    )(input)
-}
-
 
 pub fn run(input: &str) -> anyhow::Result<String> {
-    let sum: usize = input.lines()
-        .filter_map(|line| Some(game_id(line).ok()?))
-        .filter_map(|(line, game_id)| {
-            let (_, cubeset) = parse_game(line).ok()?;
-            Some(cubeset.power() as usize)
-        })
-        // sum the cubes set power
-        .sum();
+    let numbers = find_numbers(input);
+    let mut maybe_gears = build_starmap(&input);
+    assert!(numbers.len() > 0);
+    let _ = numbers
+        .iter()
+        .for_each(|n| update_neighbors(n.x, n.y, &mut maybe_gears, n.value));
+
+    let sum = maybe_gears
+        .iter()
+        .filter(|(_, gear)| gear.num_neighbors == 2)
+        .map(|(_, gear)| gear.value)
+        .sum::<usize>();
+
     Ok(sum.to_string())
+}
+
+fn find_numbers(input: &str) -> Vec<Number> {
+    let mut numbers = Vec::new();
+    let _ = input.lines().enumerate().for_each(|(y, line)| {
+        let mut input = line;
+        loop {
+            if input.is_empty() {
+                break;
+            }
+            match maybe_number(&input) {
+                Ok((forward, maybe_n)) => {
+                    input = forward;
+
+                    match maybe_n {
+                        Some(n) => {
+                            let x = line.len() - forward.len() - n.to_string().len();
+                            numbers.push(Number {
+                                x: x as isize,
+                                y: y as isize,
+                                value: n,
+                            });
+                        }
+                        None => {}
+                    }
+                }
+                _ => continue,
+            };
+        }
+    });
+    numbers
+}
+fn build_starmap(input: &str) -> HashMap<P, Gear> {
+    let mut symbols = HashMap::new();
+    input.lines().enumerate().for_each(|(y, line)| {
+        line.chars().enumerate().for_each(|(x, c)| match c {
+            '*' => {
+                symbols.insert(
+                    P {
+                        x: x as isize,
+                        y: y as isize,
+                    },
+                    Gear {
+                        num_neighbors: 0,
+                        value: 1,
+                    },
+                );
+            }
+            _ => {}
+        })
+    });
+    symbols
+}
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+struct Gear {
+    num_neighbors: usize,
+    value: usize,
+}
+
+fn update_neighbors(x: isize, y: isize, gears: &mut HashMap<P, Gear>, n: u32) {
+    let moves: Vec<(isize, isize)> = vec![
+        (-1, -1),
+        (-1, 0),
+        (-1, 1),
+        (0, -1),
+        (0, 0),
+        (0, 1),
+        (1, -1),
+        (1, 0),
+        (1, 1),
+    ];
+    let mut lookups: HashSet<P> = HashSet::new();
+    n.to_string().chars().enumerate().for_each(|(i, _)| {
+        moves.iter().for_each(|(dx, dy)| {
+            let x = x + i as isize + dx;
+            let y = y + dy;
+            lookups.insert(P { x, y });
+        })
+    });
+
+    assert!(lookups.len() >= 9);
+    lookups.iter().for_each(|&p| {
+        gears.entry(p).and_modify(|e| {
+            e.num_neighbors += 1;
+            e.value *= n as usize;
+        });
+    })
 }
 
 #[cfg(test)]
@@ -139,65 +133,65 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_color() {
-        assert_eq!(parse_color("3 blue"), Ok(("", CubeCount { r: 0, g: 0, b: 3 })));
-        assert_eq!(parse_color("4 red"), Ok(("", CubeCount { r: 4, g: 0, b: 0 })));
-        assert_eq!(parse_color("2 green"), Ok(("", CubeCount { r: 0, g: 2, b: 0 })));
-    }
-
-    #[test]
-    fn test_parse_round() {
-        assert_eq!(parse_round("3 blue, 4 red, 1 blue").unwrap().1, CubeCount { r: 4, g: 0, b: 4 });
-        assert_eq!(parse_round("3 blue, 4 red, 1 blue;").unwrap().1, CubeCount { r: 4, g: 0, b: 4 });
-        assert_eq!(parse_round("3 blue, 4 red, 1 blue; 2 blue").unwrap(), ("; 2 blue", CubeCount { r: 4, g: 0, b: 4 }));
-        assert_eq!(parse_round("; 2 blue").unwrap().1, CubeCount { r: 0, g: 0, b: 2 });
-    }
-
-    #[test]
-    fn test_parse_game() {
-        assert_eq!(parse_game("3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green;").unwrap().1, vec![
-            CubeCount { r: 4, g: 0, b: 3 },
-            CubeCount { r: 1, g: 2, b: 6 },
-            CubeCount { r: 0, g: 2, b: 0 },
-            CubeCount { r: 0, g: 0, b: 0 },
-        ]);
-        assert_eq!(parse_game("13 green, 1 red, 5 blue; 2 red, 5 green, 7 blue; 19 green, 5 blue; 4 blue, 13 green; 5 green, 8 blue").unwrap().1, vec![
-            CubeCount { r: 1, g: 13, b: 5 },
-            CubeCount { r: 2, g: 5, b: 7 },
-            CubeCount { r: 0, g: 19, b: 5 },
-            CubeCount { r: 0, g: 13, b: 4 },
-            CubeCount { r: 0, g: 5, b: 8 },
-        ]);
-
-        let too_high =CubeCount { r: 0, g: 19, b: 5 };
-        let limits = CubeCount { r: 12, g: 13, b: 14 };
-        assert_eq!(too_high.all_lt(&limits), false);
-    }
-
-    #[test]
-    fn test_part1() {
-        assert_eq!(run(
-            "
-Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green
-Game 2: 1 blue, 2 green; 3 green, 4 blue, 1 red; 1 green, 1 blue
-Game 3: 8 green, 6 blue, 20 red; 5 blue, 4 red, 13 green; 5 green, 1 red
-Game 4: 1 green, 3 red, 6 blue; 3 green, 6 red; 3 green, 15 blue, 14 red
-Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green
-            "
-        ).unwrap(), "8");
-
-        assert_eq!(run(
-            "
-Game 98: 13 green, 1 red, 5 blue; 2 red, 5 green, 7 blue; 19 green, 5 blue; 4 blue, 13 green; 5 green, 8 blue
+    fn test_find_numbers() {
+        let input = "\
+12.$
+..3.
+45*.\
 "
-        ).unwrap(), "0");
+        .to_string();
+        let numbers = find_numbers(&input);
+        assert_eq!(numbers.len(), 3);
+        assert_eq!(
+            numbers,
+            vec![
+                Number {
+                    x: 0,
+                    y: 0,
+                    value: 12
+                },
+                Number {
+                    x: 2,
+                    y: 1,
+                    value: 3
+                },
+                Number {
+                    x: 0,
+                    y: 2,
+                    value: 45
+                }
+            ]
+        );
+    }
 
-        assert_eq!(run(
-            "
-Game 1: 1 blue; 4 green, 5 blue; 11 red, 3 blue, 11 green; 1 red, 10 green, 4 blue; 17 red, 12 green, 7 blue; 3 blue, 19 green, 15 red
-Game 99: 11 red, 8 green; 16 red, 10 green; 9 red, 6 green; 3 blue, 2 red, 4 green
-Game 100: 4 red, 2 blue, 4 green; 2 green, 1 red, 1 blue; 3 green, 4 blue, 5 red; 18 red, 2 blue; 9 red, 5 green, 4 blue
-    "
-        ).unwrap(), "0");
+    #[test]
+    fn test_build_gears() {
+        let input = "\
+12.$
+..3.
+45*.\
+"
+        .to_string();
+        let stars = build_starmap(&input);
+        assert_eq!(stars.len(), 1);
+        assert!(stars.contains_key(&P { x: 2, y: 2 }));
+    }
+
+    #[test]
+    fn test_gears_sum() {
+        assert_eq!(
+            run("467..114..
+...*......
+..35..633.
+......#...
+617*......
+.....+.58.
+..592.....
+......755.
+...$.*....
+.664.598..")
+            .unwrap(),
+            "467835"
+        )
     }
 }

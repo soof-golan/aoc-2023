@@ -2,7 +2,6 @@ use std::collections::HashSet;
 
 use nom::branch::alt;
 use nom::character::complete::u32 as u32_parser;
-use nom::character::is_digit;
 use nom::character::streaming::anychar;
 use nom::combinator::map;
 use nom::IResult;

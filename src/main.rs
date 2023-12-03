@@ -29,6 +29,7 @@ fn main() {
         Solution::D2P1 => day2::part1::run(input_content),
         Solution::D2P2 => day2::part2::run(input_content),
         Solution::D3P1 => day3::part1::run(input_content),
+        Solution::D3P2 => day3::part2::run(input_content),
     }
     .expect("Failed to run solution");
 
