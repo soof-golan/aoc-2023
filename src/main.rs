@@ -1,4 +1,3 @@
-
 use std::fs;
 use std::path::Path;
 use std::str::from_utf8;
@@ -10,8 +9,9 @@ use crate::solution::Solution;
 
 mod cli;
 mod day1;
-mod solution;
 mod day2;
+mod day3;
+mod solution;
 
 fn main() {
     let args = Args::parse();
@@ -28,6 +28,7 @@ fn main() {
         Solution::D1P2 => day1::part2::run(input_content),
         Solution::D2P1 => day2::part1::run(input_content),
         Solution::D2P2 => day2::part2::run(input_content),
+        Solution::D3P1 => day3::part1::run(input_content),
     }
     .expect("Failed to run solution");
 

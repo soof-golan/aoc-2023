@@ -125,7 +125,7 @@ fn parse_game(input: &str) -> IResult<&str, CubeCount> {
 pub fn run(input: &str) -> anyhow::Result<String> {
     let sum: usize = input.lines()
         .filter_map(|line| Some(game_id(line).ok()?))
-        .filter_map(|(line, _game_id)| {
+        .filter_map(|(line, game_id)| {
             let (_, cubeset) = parse_game(line).ok()?;
             Some(cubeset.power() as usize)
         })
@@ -155,19 +155,19 @@ mod tests {
 
     #[test]
     fn test_parse_game() {
-        // assert_eq!(parse_game("3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green;").unwrap().1, vec![
-        //     CubeCount { r: 4, g: 0, b: 3 },
-        //     CubeCount { r: 1, g: 2, b: 6 },
-        //     CubeCount { r: 0, g: 2, b: 0 },
-        //     CubeCount { r: 0, g: 0, b: 0 },
-        // ]);
-        // assert_eq!(parse_game("13 green, 1 red, 5 blue; 2 red, 5 green, 7 blue; 19 green, 5 blue; 4 blue, 13 green; 5 green, 8 blue").unwrap().1, vec![
-        //     CubeCount { r: 1, g: 13, b: 5 },
-        //     CubeCount { r: 2, g: 5, b: 7 },
-        //     CubeCount { r: 0, g: 19, b: 5 },
-        //     CubeCount { r: 0, g: 13, b: 4 },
-        //     CubeCount { r: 0, g: 5, b: 8 },
-        // ]);
+        assert_eq!(parse_game("3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green;").unwrap().1, vec![
+            CubeCount { r: 4, g: 0, b: 3 },
+            CubeCount { r: 1, g: 2, b: 6 },
+            CubeCount { r: 0, g: 2, b: 0 },
+            CubeCount { r: 0, g: 0, b: 0 },
+        ]);
+        assert_eq!(parse_game("13 green, 1 red, 5 blue; 2 red, 5 green, 7 blue; 19 green, 5 blue; 4 blue, 13 green; 5 green, 8 blue").unwrap().1, vec![
+            CubeCount { r: 1, g: 13, b: 5 },
+            CubeCount { r: 2, g: 5, b: 7 },
+            CubeCount { r: 0, g: 19, b: 5 },
+            CubeCount { r: 0, g: 13, b: 4 },
+            CubeCount { r: 0, g: 5, b: 8 },
+        ]);
 
         let too_high =CubeCount { r: 0, g: 19, b: 5 };
         let limits = CubeCount { r: 12, g: 13, b: 14 };
