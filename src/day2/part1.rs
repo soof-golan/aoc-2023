@@ -3,8 +3,8 @@ use std::ops::{Add, AddAssign};
 use nom::bytes::complete::tag;
 use nom::character::complete::{alpha1, digit1};
 use nom::combinator::{map_res, opt};
-use nom::IResult;
 use nom::multi::fold_many0;
+use nom::IResult;
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
 struct CubeCount {
@@ -35,18 +35,13 @@ impl AddAssign<CubeCount> for CubeCount {
 
 impl CubeCount {
     fn new() -> Self {
-        CubeCount {
-            r: 0,
-            g: 0,
-            b: 0,
-        }
+        CubeCount { r: 0, g: 0, b: 0 }
     }
 
     fn all_lt(&self, other: &CubeCount) -> bool {
         self.r <= other.r && self.g <= other.g && self.b <= other.b
     }
 }
-
 
 fn game_id(input: &str) -> IResult<&str, usize> {
     let (input, _) = tag("Game ")(input)?;
@@ -57,13 +52,24 @@ fn game_id(input: &str) -> IResult<&str, usize> {
 
 fn str_to_count(input: &str, count: u32) -> CubeCount {
     match input {
-        "red" => CubeCount { r: count, g: 0, b: 0 },
-        "green" => CubeCount { r: 0, g: count, b: 0 },
-        "blue" => CubeCount { r: 0, g: 0, b: count },
+        "red" => CubeCount {
+            r: count,
+            g: 0,
+            b: 0,
+        },
+        "green" => CubeCount {
+            r: 0,
+            g: count,
+            b: 0,
+        },
+        "blue" => CubeCount {
+            r: 0,
+            g: 0,
+            b: count,
+        },
         _ => panic!("Unknown color: {:?}", input),
     }
 }
-
 
 /// ```rust
 /// assert_eq!(parse_color("3 blue"), Ok(("", CubeCount { r: 0, g: 0, b: 3 })));
@@ -75,39 +81,32 @@ fn parse_color(input: &str) -> IResult<&str, CubeCount> {
     let (input, color) = alpha1(input)?;
     let (input, _) = opt(tag(","))(input)?; // consume the comma
     let (input, _) = opt(tag(" "))(input)?; // consume the comma
-    return Ok((input, str_to_count(color, count)));
+    Ok((input, str_to_count(color, count)))
 }
 
 fn parse_round(input: &str) -> IResult<&str, CubeCount> {
     if input.is_empty() {
-        return Err(nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Eof)));
+        return Err(nom::Err::Error(nom::error::Error::new(
+            input,
+            nom::error::ErrorKind::Eof,
+        )));
     }
     let (input, _) = opt(tag(";"))(input)?; // consume the semicolon
     let (input, _) = opt(tag(" "))(input)?; // consume the semicolon
-    let (input, result) = fold_many0(
-        parse_color,
-        CubeCount::new,
-        |mut acc, item| {
-            acc += item;
-            acc
-        },
-    )(input)?;
+    let (input, result) = fold_many0(parse_color, CubeCount::new, |mut acc, item| {
+        acc += item;
+        acc
+    })(input)?;
     Ok((input, result))
 }
 
-
 /// pareses: '3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green, 1 green'
 fn parse_game(input: &str) -> IResult<&str, Vec<CubeCount>> {
-    fold_many0(
-        parse_round,
-        Vec::new,
-        |mut acc, item| {
-            acc.push(item);
-            acc
-        },
-    )(input)
+    fold_many0(parse_round, Vec::new, |mut acc, item| {
+        acc.push(item);
+        acc
+    })(input)
 }
-
 
 pub fn run(input: &str) -> anyhow::Result<String> {
     let limit = CubeCount {
@@ -115,16 +114,15 @@ pub fn run(input: &str) -> anyhow::Result<String> {
         g: 13,
         b: 14,
     };
-    let sum: usize = input.lines()
-        .filter_map(|line| Some(game_id(line).ok()?))
+    let sum: usize = input
+        .lines()
+        .filter_map(|line| game_id(line).ok())
         .filter_map(|(line, game_id)| {
-            match parse_game(line).ok()? {
-                (_, cubes) => {
-                    match cubes.iter().all(|count| count.all_lt(&limit)) {
-                        true => Some(game_id),
-                        false => None,
-                    }
-                }
+            let (_, cubes) = parse_game(line).ok()?;
+            if let true = cubes.iter().all(|count| count.all_lt(&limit)) {
+                Some(game_id)
+            } else {
+                None
             }
         })
         // sum the remaining Game IDs
@@ -138,27 +136,53 @@ mod tests {
 
     #[test]
     fn test_parse_color() {
-        assert_eq!(parse_color("3 blue"), Ok(("", CubeCount { r: 0, g: 0, b: 3 })));
-        assert_eq!(parse_color("4 red"), Ok(("", CubeCount { r: 4, g: 0, b: 0 })));
-        assert_eq!(parse_color("2 green"), Ok(("", CubeCount { r: 0, g: 2, b: 0 })));
+        assert_eq!(
+            parse_color("3 blue"),
+            Ok(("", CubeCount { r: 0, g: 0, b: 3 }))
+        );
+        assert_eq!(
+            parse_color("4 red"),
+            Ok(("", CubeCount { r: 4, g: 0, b: 0 }))
+        );
+        assert_eq!(
+            parse_color("2 green"),
+            Ok(("", CubeCount { r: 0, g: 2, b: 0 }))
+        );
     }
 
     #[test]
     fn test_parse_round() {
-        assert_eq!(parse_round("3 blue, 4 red, 1 blue").unwrap().1, CubeCount { r: 4, g: 0, b: 4 });
-        assert_eq!(parse_round("3 blue, 4 red, 1 blue;").unwrap().1, CubeCount { r: 4, g: 0, b: 4 });
-        assert_eq!(parse_round("3 blue, 4 red, 1 blue; 2 blue").unwrap(), ("; 2 blue", CubeCount { r: 4, g: 0, b: 4 }));
-        assert_eq!(parse_round("; 2 blue").unwrap().1, CubeCount { r: 0, g: 0, b: 2 });
+        assert_eq!(
+            parse_round("3 blue, 4 red, 1 blue").unwrap().1,
+            CubeCount { r: 4, g: 0, b: 4 }
+        );
+        assert_eq!(
+            parse_round("3 blue, 4 red, 1 blue;").unwrap().1,
+            CubeCount { r: 4, g: 0, b: 4 }
+        );
+        assert_eq!(
+            parse_round("3 blue, 4 red, 1 blue; 2 blue").unwrap(),
+            ("; 2 blue", CubeCount { r: 4, g: 0, b: 4 })
+        );
+        assert_eq!(
+            parse_round("; 2 blue").unwrap().1,
+            CubeCount { r: 0, g: 0, b: 2 }
+        );
     }
 
     #[test]
     fn test_parse_game() {
-        assert_eq!(parse_game("3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green;").unwrap().1, vec![
-            CubeCount { r: 4, g: 0, b: 3 },
-            CubeCount { r: 1, g: 2, b: 6 },
-            CubeCount { r: 0, g: 2, b: 0 },
-            CubeCount { r: 0, g: 0, b: 0 },
-        ]);
+        assert_eq!(
+            parse_game("3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green;")
+                .unwrap()
+                .1,
+            vec![
+                CubeCount { r: 4, g: 0, b: 3 },
+                CubeCount { r: 1, g: 2, b: 6 },
+                CubeCount { r: 0, g: 2, b: 0 },
+                CubeCount { r: 0, g: 0, b: 0 },
+            ]
+        );
         assert_eq!(parse_game("13 green, 1 red, 5 blue; 2 red, 5 green, 7 blue; 19 green, 5 blue; 4 blue, 13 green; 5 green, 8 blue").unwrap().1, vec![
             CubeCount { r: 1, g: 13, b: 5 },
             CubeCount { r: 2, g: 5, b: 7 },
@@ -167,22 +191,28 @@ mod tests {
             CubeCount { r: 0, g: 5, b: 8 },
         ]);
 
-        let too_high =CubeCount { r: 0, g: 19, b: 5 };
-        let limits = CubeCount { r: 12, g: 13, b: 14 };
+        let too_high = CubeCount { r: 0, g: 19, b: 5 };
+        let limits = CubeCount {
+            r: 12,
+            g: 13,
+            b: 14,
+        };
         assert_eq!(too_high.all_lt(&limits), false);
     }
 
     #[test]
     fn test_part1() {
-        assert_eq!(run(
-            "
+        assert_eq!(
+            run("
 Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green
 Game 2: 1 blue, 2 green; 3 green, 4 blue, 1 red; 1 green, 1 blue
 Game 3: 8 green, 6 blue, 20 red; 5 blue, 4 red, 13 green; 5 green, 1 red
 Game 4: 1 green, 3 red, 6 blue; 3 green, 6 red; 3 green, 15 blue, 14 red
 Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green
-            "
-        ).unwrap(), "8");
+            ")
+            .unwrap(),
+            "8"
+        );
 
         assert_eq!(run(
             "

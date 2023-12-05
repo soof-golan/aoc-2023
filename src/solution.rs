@@ -11,6 +11,7 @@ pub enum Day {
     D3P1,
     D3P2,
     D4,
+    D5,
 }
 
 pub struct Solution {

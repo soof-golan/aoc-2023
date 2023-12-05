@@ -1,3 +1,4 @@
+
 use std::usize;
 
 use nom::branch::alt;
@@ -22,8 +23,9 @@ pub fn run(input: &str) -> anyhow::Result<Solution> {
         let probe_start = id + 1;
         let probe_end = probe_start + probe;
         for i in probe_start..probe_end {
-            if let Some(count) = card_count.get_mut(i) {
-                *count += our_count
+            match card_count.get_mut(i) {
+                Some(count) => *count += our_count,
+                None => (),
             }
         }
     }

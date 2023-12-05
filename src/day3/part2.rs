@@ -20,14 +20,14 @@ struct Number {
 }
 
 fn maybe_number(input: &str) -> IResult<&str, Option<u32>> {
-    alt((map(u32_parser, |n: u32| Some(n)), map(anychar, |_| None)))(input)
+    alt((map(u32_parser, Some), map(anychar, |_| None)))(input)
 }
 
 pub fn run(input: &str) -> anyhow::Result<String> {
     let numbers = find_numbers(input);
-    let mut maybe_gears = build_starmap(&input);
-    assert!(numbers.len() > 0);
-    let _ = numbers
+    let mut maybe_gears = build_starmap(input);
+    assert!(!numbers.is_empty());
+    numbers
         .iter()
         .for_each(|n| update_neighbors(n.x, n.y, &mut maybe_gears, n.value));
 
@@ -42,26 +42,22 @@ pub fn run(input: &str) -> anyhow::Result<String> {
 
 fn find_numbers(input: &str) -> Vec<Number> {
     let mut numbers = Vec::new();
-    let _ = input.lines().enumerate().for_each(|(y, line)| {
+    input.lines().enumerate().for_each(|(y, line)| {
         let mut input = line;
         loop {
             if input.is_empty() {
                 break;
             }
-            match maybe_number(&input) {
+            match maybe_number(input) {
                 Ok((forward, maybe_n)) => {
                     input = forward;
-
-                    match maybe_n {
-                        Some(n) => {
-                            let x = line.len() - forward.len() - n.to_string().len();
-                            numbers.push(Number {
-                                x: x as isize,
-                                y: y as isize,
-                                value: n,
-                            });
-                        }
-                        None => {}
+                    if let Some(n) = maybe_n {
+                        let x = line.len() - forward.len() - n.to_string().len();
+                        numbers.push(Number {
+                            x: x as isize,
+                            y: y as isize,
+                            value: n,
+                        });
                     }
                 }
                 _ => continue,
@@ -73,8 +69,8 @@ fn find_numbers(input: &str) -> Vec<Number> {
 fn build_starmap(input: &str) -> HashMap<P, Gear> {
     let mut symbols = HashMap::new();
     input.lines().enumerate().for_each(|(y, line)| {
-        line.chars().enumerate().for_each(|(x, c)| match c {
-            '*' => {
+        line.chars().enumerate().for_each(|(x, c)| {
+            if let '*' = c {
                 symbols.insert(
                     P {
                         x: x as isize,
@@ -86,7 +82,6 @@ fn build_starmap(input: &str) -> HashMap<P, Gear> {
                     },
                 );
             }
-            _ => {}
         })
     });
     symbols
