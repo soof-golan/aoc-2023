@@ -1,3 +1,5 @@
+#![feature(btree_cursors)]
+
 use std::fs;
 use std::path::Path;
 use std::str::from_utf8;
