@@ -1,70 +1,87 @@
 use std::collections::BTreeMap;
-use std::io::Read;
 use std::ops::Bound;
 
 use clap::builder::TypedValueParser;
 use nom::bytes::complete::tag;
-use nom::character::complete::{alpha1, newline, u32};
+use nom::character::complete::{alpha1, newline, u64};
 use nom::combinator::{map, opt};
 use nom::multi::{fold_many1, separated_list1};
 use nom::sequence::{delimited, preceded, separated_pair, terminated, tuple};
-use nom::{IResult, Parser};
+use nom::IResult;
 
 use crate::solution::Solution;
+
+type BTM = BTreeMap<u64, i64>;
 
 pub fn run(input: &str) -> anyhow::Result<Solution> {
     let (input, state) = parse_state(input).expect("failed to parse state");
     assert_eq!(input, "");
-    let (seeds, translation_maps): (Vec<u32>, Vec<BTreeMap<u32, i32>>) =
-        (state.seeds, state.translation_maps);
+    let (seeds, translation_maps): (Vec<u64>, Vec<BTM>) = (state.seeds, state.translation_maps);
 
-    let mut layers: Vec<Vec<u32>> = vec![seeds];
-    for layer in translation_maps {
-        let previous_layer = layers.last().unwrap();
-        let layer: Vec<u32> = previous_layer
-            .iter()
-            .map(|seed| translate(&layer, *seed))
-            .collect();
-        layers.push(layer);
-    }
+    let ranged: u64 = seeds
+        .chunks_exact(2)
+        .flat_map(|chunk| {
+            let start = chunk[0] - 1;
+            let end = chunk[0] + chunk[1];
+            println!("{} - {}", start, end);
+            (start..end).collect::<Vec<u64>>()
+        })
+        .map(|seed| {
+            translation_maps
+                .iter()
+                .fold(seed, |seed, map| translate(&map, seed))
+        })
+        .min()
+        .unwrap();
 
-    let last_layer = layers.last().unwrap();
-    let part1_answer = last_layer.iter().min().unwrap();
+    let part1 = seeds
+        // Hack start: Solves a compiler complaint that I couldn't figure out how to fix
+        .chunks_exact(1)
+        .flat_map(|chunk| chunk[0]..=chunk[0])
+        // Hack end
+        .map(|seed| {
+            translation_maps
+                .iter()
+                .fold(seed, |seed, map| translate(&map, seed))
+        })
+        .min()
+        .unwrap();
+
     Ok(Solution {
-        part1: part1_answer.to_string(),
-        part2: "".to_string(),
+        part1: part1.to_string(),
+        part2: ranged.to_string(),
     })
 }
 
-fn parse_numbers(input: &str) -> IResult<&str, Vec<u32>> {
-    separated_list1(tag(" "), u32)(input)
+fn parse_numbers(input: &str) -> IResult<&str, Vec<u64>> {
+    separated_list1(tag(" "), u64)(input)
 }
 
-fn seeds(input: &str) -> IResult<&str, Vec<u32>> {
+fn seeds(input: &str) -> IResult<&str, Vec<u64>> {
     preceded(tag("seeds: "), parse_numbers)(input)
 }
 
 #[derive(Debug, PartialEq)]
 struct Category {
-    source: u32,
-    range_length: u32,
-    offset: i32,
+    source: u64,
+    range_length: u64,
+    offset: i64,
 }
 
 /// returns (source, range_length, offset)
 /// offset = destination - source
 fn category(input: &str) -> IResult<&str, Category> {
     map(
-        tuple((u32, tag(" "), u32, tag(" "), u32)),
+        tuple((u64, tag(" "), u64, tag(" "), u64)),
         |(destination, _, source, _, range_length)| Category {
             source,
             range_length,
-            offset: destination as i32 - source as i32,
+            offset: destination as i64 - source as i64,
         },
     )(input)
 }
 
-fn category_map(input: &str) -> IResult<&str, BTreeMap<u32, i32>> {
+fn category_map(input: &str) -> IResult<&str, BTM> {
     preceded(
         tag("map:\n"),
         fold_many1(
@@ -99,7 +116,7 @@ fn map_names(input: &str) -> IResult<&str, MapNames> {
     )(input)
 }
 
-fn maps(input: &str) -> IResult<&str, Vec<BTreeMap<u32, i32>>> {
+fn maps(input: &str) -> IResult<&str, Vec<BTM>> {
     separated_list1(newline, preceded(map_names, category_map))(input)
 }
 
@@ -113,18 +130,18 @@ fn parse_state(input: &str) -> IResult<&str, State> {
     )(input)
 }
 
-fn translate(map: &BTreeMap<u32, i32>, index: u32) -> u32 {
+fn translate(map: &BTM, index: u64) -> u64 {
     let cursor = map.upper_bound(Bound::Excluded(&index));
     match cursor.value() {
-        Some(offset) => (index as i32 + offset).clone() as u32,
-        None => index.clone(),
+        Some(offset) => (index as i64 + offset) as u64,
+        None => index,
     }
 }
 
 #[derive(Debug, PartialEq)]
 struct State {
-    seeds: Vec<u32>,
-    translation_maps: Vec<BTreeMap<u32, i32>>,
+    seeds: Vec<u64>,
+    translation_maps: Vec<BTM>,
 }
 
 #[cfg(test)]
@@ -171,10 +188,9 @@ mod tests {
 
     #[test]
     fn test_translation() {
-        let seeds = vec![79u32, 14, 55, 13];
-        let map: BTreeMap<u32, i32> =
-            BTreeMap::from_iter(vec![(50, 2), (50 + 48 - 1, 0), (98, -48), (98 + 2 - 1, 0)]);
-        let actual: Vec<u32> = seeds.iter().map(|seed| translate(&map, *seed)).collect();
+        let seeds = vec![79u64, 14, 55, 13];
+        let map: BTM = BTM::from_iter(vec![(50, 2), (50 + 48 - 1, 0), (98, -48), (98 + 2 - 1, 0)]);
+        let actual: Vec<u64> = seeds.iter().map(|seed| translate(&map, *seed)).collect();
         let expected = vec![81, 14, 57, 13];
         assert_eq!(actual, expected);
     }
@@ -184,7 +200,7 @@ mod tests {
         let input = "map:
 50 98 2
 52 50 48";
-        let expected: BTreeMap<u32, i32> =
+        let expected: BTM =
             BTreeMap::from_iter(vec![(50, 2), (50 + 48 - 1, 0), (98, -48), (98 + 2 - 1, 0)]);
         assert_eq!(category_map(input).unwrap().1, expected);
     }
@@ -295,5 +311,42 @@ humidity-to-location map:
 60 56 37
 56 93 4";
         assert_eq!(run(input).unwrap().part1, "35");
+    }
+    #[test]
+    fn test_part2() {
+        let input = "seeds: 79 14 55 13
+
+seed-to-soil map:
+50 98 2
+52 50 48
+
+soil-to-fertilizer map:
+0 15 37
+37 52 2
+39 0 15
+
+fertilizer-to-water map:
+49 53 8
+0 11 42
+42 0 7
+57 7 4
+
+water-to-light map:
+88 18 7
+18 25 70
+
+light-to-temperature map:
+45 77 23
+81 45 19
+68 64 13
+
+temperature-to-humidity map:
+0 69 1
+1 0 69
+
+humidity-to-location map:
+60 56 37
+56 93 4";
+        assert_eq!(run(input).unwrap().part2, "46");
     }
 }
