@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 use std::ops::Bound;
 
-use clap::builder::TypedValueParser;
 use nom::bytes::complete::tag;
 use nom::character::complete::{alpha1, newline, u64};
 use nom::combinator::{map, opt};

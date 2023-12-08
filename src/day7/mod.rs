@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::ops::IndexMut;
 
 use nom::bytes::complete::{tag, take};
 use nom::character::complete::{newline, u32};
