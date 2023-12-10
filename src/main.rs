@@ -18,6 +18,7 @@ mod day4;
 mod day5;
 mod day7;
 mod day8;
+mod day9;
 mod solution;
 
 enum DayResult {
@@ -46,6 +47,7 @@ fn main() {
         Day::D5 => FullSolution(day5::run(input_content).unwrap()),
         Day::D7 => FullSolution(day7::run(input_content).unwrap()),
         Day::D8 => FullSolution(day8::run(input_content).unwrap()),
+        Day::D9 => FullSolution(day9::run(input_content).unwrap()),
     };
     match output {
         SinglePart(output) => {
