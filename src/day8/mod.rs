@@ -1,9 +1,6 @@
-use itertools::{process_results, Itertools};
-use num::Integer;
 use std::collections::{HashMap, HashSet};
 use std::iter::zip;
 use std::ops::ControlFlow::{Break, Continue};
-use std::time;
 
 use anyhow;
 use nom::bytes::complete::{tag, take};
@@ -12,7 +9,7 @@ use nom::combinator::{map, opt};
 use nom::multi::{fold_many1, many1};
 use nom::sequence::{delimited, separated_pair, terminated};
 use nom::IResult;
-use tqdm::Iter;
+use num::Integer;
 
 use crate::solution::Solution;
 

@@ -12,6 +12,7 @@ use crate::DayResult::{FullSolution, SinglePart};
 
 mod cli;
 mod day1;
+mod day10;
 mod day2;
 mod day3;
 mod day4;
@@ -48,6 +49,7 @@ fn main() {
         Day::D7 => FullSolution(day7::run(input_content).unwrap()),
         Day::D8 => FullSolution(day8::run(input_content).unwrap()),
         Day::D9 => FullSolution(day9::run(input_content).unwrap()),
+        Day::D10 => FullSolution(day10::run(input_content).unwrap()),
     };
     match output {
         SinglePart(output) => {
