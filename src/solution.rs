@@ -16,6 +16,7 @@ pub enum Day {
     D8,
     D9,
     D10,
+    D11,
 }
 
 pub struct Solution {
