@@ -8,10 +8,9 @@ authors = [
 dependencies = [
     "regex~=2023.10.3",
     "more_itertools>=10.1.0",
-    "tqdm>=4.66.1",
 ]
 readme = "README.md"
-requires-python = ">= 3.11"
+requires-python = ">= 3.8"
 
 [build-system]
 requires = ["hatchling"]
@@ -19,9 +18,7 @@ build-backend = "hatchling.build"
 
 [tool.rye]
 managed = true
-dev-dependencies = [
-    "pytest>=7.4.3",
-]
+dev-dependencies = []
 
 [tool.hatch.metadata]
 allow-direct-references = true
